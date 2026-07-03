@@ -1,5 +1,4 @@
 import * as React from "react"
-// Ganti import absolute dengan relative
 import { cn } from "../../lib/utils"
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

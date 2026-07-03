@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-// Ubah import supabase ke relative path
 import { supabase } from "../../lib/supabase/client"
 import { Card, CardContent } from "../ui/Card"
 
