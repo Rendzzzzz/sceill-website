@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { supabase } from "../../lib/supabase/client"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -31,28 +30,17 @@ export default function AdminProductsPage() {
   }, [session, status])
 
   const fetchProducts = async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, name, price, stock, is_available, category')
-      .order('created_at', { ascending: false })
-    
-    if (!error && data) {
-      setProducts(data)
-    }
+    const res = await fetch('/api/admin/products')
+    if (res.ok) setProducts(await res.json())
     setLoading(false)
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return
-    
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', id)
-    
-    if (!error) {
-      fetchProducts()
-    }
+
+    const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE' })
+    if (res.ok) fetchProducts()
+    else alert('Could not delete the product')
   }
 
   if (loading) {
