@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { supabase } from "../../lib/supabase/client"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -31,28 +30,17 @@ export default function AdminPromosPage() {
   }, [session, status])
 
   const fetchPromos = async () => {
-    const { data, error } = await supabase
-      .from('promos')
-      .select('*')
-      .order('created_at', { ascending: false })
-    
-    if (!error && data) {
-      setPromos(data)
-    }
+    const res = await fetch('/api/admin/promos')
+    if (res.ok) setPromos(await res.json())
     setLoading(false)
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this promo?')) return
-    
-    const { error } = await supabase
-      .from('promos')
-      .delete()
-      .eq('id', id)
-    
-    if (!error) {
-      fetchPromos()
-    }
+
+    const res = await fetch(`/api/admin/promos/${id}`, { method: 'DELETE' })
+    if (res.ok) fetchPromos()
+    else alert('Could not delete the promo')
   }
 
   if (loading) {

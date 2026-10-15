@@ -1,151 +1,132 @@
-"use client"
-
-import { useEffect, useState } from "react"
-import { supabase } from "../lib/supabase/client"
-import { Card, CardContent } from "../components/ui/Card"
+import type { Metadata } from "next"
 import Link from "next/link"
+import { Search } from "lucide-react"
+import { getCategories, getProducts, type ProductSort } from "../lib/products"
+import { ProductCard } from "../components/product/ProductCard"
+import { cn } from "../lib/utils"
 
-interface Product {
-  id: string
-  name: string
-  description: string
-  price: number
-  image_url: string
-  category: string
-  stock: number
-  is_available: boolean
+export const metadata: Metadata = {
+  title: "Collection",
+  description: "Browse the full SCEILL fragrance collection.",
 }
 
-export default function CatalogPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [categories, setCategories] = useState<string[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+type SearchParams = { [key: string]: string | string[] | undefined }
 
-  useEffect(() => {
-    fetchProducts()
-  }, [selectedCategory])
+const SORTS: { value: ProductSort; label: string }[] = [
+  { value: "newest", label: "Newest" },
+  { value: "price-asc", label: "Price: low to high" },
+  { value: "price-desc", label: "Price: high to low" },
+  { value: "name", label: "Name A-Z" },
+]
 
-  const fetchProducts = async () => {
-    setLoading(true)
-    let query = supabase.from('products').select('*')
-    
-    if (selectedCategory !== "all") {
-      query = query.eq('category', selectedCategory)
-    }
-    
-    const { data, error } = await query
-    if (!error && data) {
-      setProducts(data)
-      // Extract unique categories
-      const uniqueCategories = [...new Set(data.map(p => p.category))] as string[]
-      setCategories(uniqueCategories)
-    }
-    setLoading(false)
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
+
+export default async function CatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}) {
+  const params = await searchParams
+  const category = first(params.category)
+  const q = first(params.q)?.slice(0, 80)
+  const sortParam = first(params.sort)
+  const sort = SORTS.some((s) => s.value === sortParam) ? (sortParam as ProductSort) : "newest"
+
+  const [products, categories] = await Promise.all([
+    getProducts({ category, q, sort }),
+    getCategories(),
+  ])
+
+  const chipHref = (cat?: string) => {
+    const next = new URLSearchParams()
+    if (cat) next.set("category", cat)
+    if (q) next.set("q", q)
+    if (sort !== "newest") next.set("sort", sort)
+    const qs = next.toString()
+    return qs ? `/catalog?${qs}` : "/catalog"
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading products...</p>
-        </div>
-      </div>
+  const chip = (active: boolean) =>
+    cn(
+      "rounded-lg px-5 py-2 text-xs uppercase tracking-[0.15em] border transition-colors",
+      active ? "bg-ink text-cream border-ink" : "border-ink/20 hover:border-ink"
     )
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-4xl font-light">Our Collection</h1>
-          <p className="text-gray-600 mt-2">Discover our exquisite range of fragrances</p>
+    <main>
+      <div className="border-b bg-sand/40">
+        <div className="container mx-auto px-4 py-14 text-center">
+          <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold-dark">SCEILL</p>
+          <h1 className="text-5xl">The collection</h1>
+          <p className="mt-3 text-muted">Discover our exquisite range of fragrances</p>
         </div>
       </div>
 
-      {/* Filter Categories */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex gap-3 flex-wrap">
-          <button
-            onClick={() => setSelectedCategory("all")}
-            className={`px-4 py-2 rounded-full text-sm transition-colors ${
-              selectedCategory === "all" 
-                ? "bg-black text-white" 
-                : "bg-gray-200 hover:bg-gray-300"
-            }`}
-          >
-            All Products
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                selectedCategory === cat 
-                  ? "bg-black text-white" 
-                  : "bg-gray-200 hover:bg-gray-300"
-              }`}
+      <div className="container mx-auto px-4 py-10">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <nav aria-label="Scent families" className="flex flex-wrap gap-2">
+            <Link href={chipHref()} className={chip(!category)}>All</Link>
+            {categories.map((cat) => (
+              <Link key={cat} href={chipHref(cat)} className={chip(category === cat)}>
+                {cat}
+              </Link>
+            ))}
+          </nav>
+
+          <form action="/catalog" className="flex flex-col gap-2 sm:flex-row">
+            {category && <input type="hidden" name="category" value={category} />}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <input
+                type="search"
+                name="q"
+                defaultValue={q}
+                placeholder="Search fragrances"
+                aria-label="Search fragrances"
+                className="h-11 w-full rounded-lg border border-ink/20 bg-transparent pl-9 pr-3 text-sm placeholder:text-muted focus:border-ink sm:w-64"
+              />
+            </div>
+            <select
+              name="sort"
+              defaultValue={sort}
+              aria-label="Sort by"
+              className="h-11 rounded-lg border border-ink/20 bg-transparent px-3 text-sm focus:border-ink"
             >
-              {cat}
+              {SORTS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="h-11 cursor-pointer rounded-lg bg-ink px-6 text-xs uppercase tracking-widest text-cream hover:bg-ink-soft"
+            >
+              Apply
             </button>
-          ))}
+          </form>
         </div>
-      </div>
 
-      {/* Products Grid */}
-      <div className="container mx-auto px-4 py-8">
+        <p className="mt-8 text-sm text-muted" aria-live="polite">
+          {products.length} {products.length === 1 ? "fragrance" : "fragrances"}
+          {category ? ` in ${category}` : ""}
+          {q ? ` matching “${q}”` : ""}
+        </p>
+
         {products.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No products found in this category.</p>
+          <div className="py-24 text-center">
+            <p className="text-2xl">No fragrances found</p>
+            <p className="mt-2 text-muted">Try a different search or scent family.</p>
+            <Link href="/catalog" className="mt-6 inline-block border-b border-ink pb-0.5 text-xs uppercase tracking-widest">
+              Clear filters
+            </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
             {products.map((product) => (
-              <Card key={product.id} className="overflow-hidden hover:shadow-xl transition-shadow group">
-                <div className="relative h-64 bg-gray-200">
-                  {product.image_url ? (
-                    <img 
-                      src={product.image_url} 
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      No Image
-                    </div>
-                  )}
-                  {!product.is_available && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span className="text-white font-semibold px-4 py-2 bg-red-600 rounded">
-                        Out of Stock
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium text-lg">{product.name}</h3>
-                      <p className="text-gray-500 text-sm">{product.category}</p>
-                    </div>
-                    <span className="text-xl font-semibold">
-                      Rp {product.price.toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                  <p className="text-gray-600 text-sm mt-2 line-clamp-2">
-                    {product.description}
-                  </p>
-                  <button className="w-full mt-4 bg-black text-white py-2 rounded hover:bg-gray-800 transition-colors">
-                    Add to Cart
-                  </button>
-                </CardContent>
-              </Card>
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}
       </div>
-    </div>
+    </main>
   )
 }

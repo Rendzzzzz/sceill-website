@@ -1,49 +1,17 @@
-"use client"
-
-import { useEffect, useState } from "react"
-import { supabase } from "../lib/supabase/client"
+import type { Metadata } from "next"
 import Link from "next/link"
+import { getPublishedPosts } from "../lib/content"
 
-interface BlogPost {
-  id: string
-  title: string
-  slug: string
-  excerpt: string
-  author: string
-  category: string
-  image_url: string
-  created_at: string
-  views: number
+export const metadata: Metadata = {
+  title: "Blog",
+  description: "Unveil the artistry of perfumery through insightful articles.",
 }
 
-export default function BlogPage() {
-  const [posts, setPosts] = useState<BlogPost[]>([])
-  const [loading, setLoading] = useState(true)
+// posts change from the admin panel; refresh the page cache every minute
+export const revalidate = 60
 
-  useEffect(() => {
-    fetchPosts()
-  }, [])
-
-  const fetchPosts = async () => {
-    const { data, error } = await supabase
-      .from('blog_posts')
-      .select('*')
-      .eq('is_published', true)
-      .order('created_at', { ascending: false })
-    
-    if (!error && data) {
-      setPosts(data)
-    }
-    setLoading(false)
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
-      </div>
-    )
-  }
+export default async function BlogPage() {
+  const posts = await getPublishedPosts()
 
   return (
     <div className="min-h-screen">
@@ -67,9 +35,9 @@ export default function BlogPage() {
               <Link href={`/blog/${post.slug}`} key={post.id}>
                 <div className="group bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
                   <div className="relative h-56 bg-gray-200">
-                    {post.image_url ? (
+                    {post.imageUrl ? (
                       <img 
-                        src={post.image_url} 
+                        src={post.imageUrl} 
                         alt={post.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
@@ -91,7 +59,7 @@ export default function BlogPage() {
                     </p>
                     <div className="flex justify-between items-center text-sm text-gray-500">
                       <span>By {post.author || 'Admin'}</span>
-                      <span>{new Date(post.created_at).toLocaleDateString('id-ID')}</span>
+                      <span>{new Date(post.createdAt).toLocaleDateString('id-ID')}</span>
                     </div>
                     <div className="mt-3 flex items-center text-gray-400 text-sm">
                       <span>👁️ {post.views || 0} views</span>

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "../../lib/supabase/client"
 import { Button } from "../ui/Button"
 import { Input } from "../ui/Input"
 
@@ -14,11 +13,12 @@ export function NewsletterSection() {
     setStatus("loading")
 
     try {
-      const { error } = await supabase
-        .from('newsletter_subscribers')
-        .insert({ email })
-
-      if (error) throw error
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
       setStatus("success")
       setEmail("")
     } catch {
@@ -27,33 +27,36 @@ export function NewsletterSection() {
   }
 
   return (
-    <section className="py-20 bg-black text-white">
-      <div className="container mx-auto px-4 max-w-2xl text-center">
-        <h2 className="text-3xl font-light mb-3">Enjoy SCEILL Exclusive Offers</h2>
-        <p className="text-gray-400 mb-8">
-          Stay up-to-date with our latest news, updates and promotions
+    <section className="bg-ink py-24 text-cream">
+      <div className="container mx-auto max-w-2xl px-4 text-center">
+        <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold">The inner circle</p>
+        <h2 className="text-4xl sm:text-5xl">Enjoy SCEILL exclusive offers</h2>
+        <p className="mb-8 mt-4 text-cream/60">
+          New launches, private promotions and fragrance notes, delivered sparingly.
         </p>
-        
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
+          <label htmlFor="newsletter-email" className="sr-only">Email address</label>
           <Input
+            id="newsletter-email"
             type="email"
             placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+            className="h-12 flex-1 rounded-lg border-white/20 bg-white/10 text-cream placeholder:text-cream/40 focus:ring-gold"
           />
-          <Button type="submit" className="bg-white text-black hover:bg-white/90">
-            Subscribe
+          <Button type="submit" variant="gold" size="lg" disabled={status === "loading"}>
+            {status === "loading" ? "Subscribing..." : "Subscribe"}
           </Button>
         </form>
 
-        {status === "success" && (
-          <p className="text-green-400 mt-4">Thank you for subscribing!</p>
-        )}
-        {status === "error" && (
-          <p className="text-red-400 mt-4">Something went wrong. Please try again.</p>
-        )}
+        <p className="mt-4 min-h-6 text-sm" role="status" aria-live="polite">
+          {status === "success" && <span className="text-gold">Thank you for subscribing!</span>}
+          {status === "error" && (
+            <span className="text-red-400">Something went wrong. Please try again.</span>
+          )}
+        </p>
       </div>
     </section>
   )

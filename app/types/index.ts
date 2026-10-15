@@ -1,5 +1,12 @@
 import { DefaultSession } from "next-auth"
 
+declare module "next-auth/jwt" {
+  interface JWT {
+    id?: string
+    role?: string
+  }
+}
+
 declare module "next-auth" {
   interface Session {
     user: {
@@ -16,6 +23,7 @@ export interface Customer {
   phone?: string
   address?: string
   city?: string
+  district?: string
   province?: string
   postal_code?: string
   country?: string
@@ -36,25 +44,4 @@ export interface Product {
   is_available: boolean
   created_at: string
   updated_at: string
-}
-
-export interface Order {
-  id: string
-  customer_id: string
-  order_number: string
-  total_amount: number
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
-  payment_method: string
-  shipping_address: string
-  created_at: string
-  updated_at: string
-}
-
-export interface OrderItem {
-  id: string
-  order_id: string
-  product_id: string
-  quantity: number
-  price: number
-  created_at: string
 }

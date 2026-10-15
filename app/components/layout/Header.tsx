@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
 import { useState, useEffect } from "react"
+import { useCart } from "../../lib/cart"
 import { 
   ShoppingCart, 
   User, 
@@ -20,7 +21,8 @@ export function Header() {
   const { data: session, status } = useSession()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
-  const [cartCount, setCartCount] = useState(0)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const { count: cartCount, openCart } = useCart()
 
   // Handle scroll effect
   useEffect(() => {
@@ -47,8 +49,8 @@ export function Header() {
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled 
-          ? 'bg-white/95 backdrop-blur-md shadow-sm border-b' 
-          : 'bg-white border-b'
+          ? 'bg-cream/95 backdrop-blur-md shadow-sm border-b' 
+          : 'bg-cream border-b'
       }`}
     >
       <div className="container mx-auto px-4">
@@ -56,9 +58,9 @@ export function Header() {
           {/* Logo */}
           <Link 
             href="/" 
-            className="text-2xl font-light tracking-wider hover:opacity-70 transition-opacity flex items-center gap-2"
+            className="hover:opacity-70 transition-opacity flex items-center gap-2"
           >
-            <span className="font-serif">SCEILL</span>
+            <span className="font-display text-3xl font-medium tracking-[0.3em]">SCEILL</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -67,10 +69,10 @@ export function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-gray-700 hover:text-black transition-colors relative group"
+                className="text-xs font-medium uppercase tracking-[0.18em] text-ink/70 hover:text-ink transition-colors relative group"
               >
                 {link.label}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-black transition-all duration-300 group-hover:w-full"></span>
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gold transition-all duration-300 group-hover:w-full"></span>
               </Link>
             ))}
           </nav>
@@ -78,14 +80,18 @@ export function Header() {
           {/* Right Side Actions */}
           <div className="flex items-center space-x-4">
             {/* Cart */}
-            <Link href="/cart" className="relative hover:opacity-70 transition-opacity">
+            <button
+              onClick={openCart}
+              className="relative cursor-pointer hover:opacity-70 transition-opacity"
+              aria-label={`Open bag, ${cartCount} items`}
+            >
               <ShoppingCart className="w-5 h-5" />
               {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="absolute -top-2 -right-2 bg-gold text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
                   {cartCount}
                 </span>
               )}
-            </Link>
+            </button>
 
             {/* User Menu */}
             {status === 'loading' ? (
@@ -93,11 +99,11 @@ export function Header() {
             ) : session ? (
               <div className="relative">
                 <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center space-x-2 hover:opacity-70 transition-opacity"
                   aria-label="User menu"
                 >
-                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-sm font-medium">
+                  <div className="w-8 h-8 rounded-full bg-ink text-cream flex items-center justify-center text-sm font-medium">
                     {session.user?.name?.charAt(0).toUpperCase() || 'U'}
                   </div>
                   <span className="hidden lg:inline text-sm font-medium text-gray-700">
@@ -106,7 +112,7 @@ export function Header() {
                 </button>
 
                 {/* Dropdown Menu */}
-                {isMenuOpen && (
+                {isUserMenuOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="px-4 py-2 border-b">
                       <p className="text-sm font-medium">{session.user?.name}</p>
@@ -143,6 +149,12 @@ export function Header() {
                             <span>Admin Dashboard</span>
                           </Link>
                           <Link
+                            href="/admin/orders"
+                            className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 text-sm text-blue-600 transition-colors pl-9"
+                          >
+                            <span>Manage Orders</span>
+                          </Link>
+                          <Link
                             href="/admin/products"
                             className="flex items-center space-x-2 px-4 py-2 hover:bg-gray-50 text-sm text-blue-600 transition-colors pl-9"
                           >
@@ -177,7 +189,7 @@ export function Header() {
               </div>
             ) : (
               <Link href="/login">
-                <button className="hidden sm:inline-block bg-black text-white px-4 py-2 rounded-md text-sm hover:bg-gray-800 transition-colors">
+                <button className="hidden sm:inline-block bg-ink text-cream px-5 py-2.5 rounded-lg text-xs uppercase tracking-widest hover:bg-ink-soft transition-colors">
                   Sign In
                 </button>
                 <button className="sm:hidden text-sm font-medium hover:opacity-70 transition-opacity">

@@ -1,11 +1,74 @@
 @import "tailwindcss";
 
+@theme {
+  --color-ink: #14110f;
+  --color-ink-soft: #2a2420;
+  --color-cream: #f7f3ec;
+  --color-sand: #e9e1d3;
+  --color-gold: #b08d57;
+  --color-gold-dark: #8f7142;
+  --color-muted: #6b645b;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cormorant), ui-serif, Georgia, serif;
+}
+
 @layer base {
   * {
-    border-color: var(--color-gray-200);
+    border-color: var(--color-sand);
+  }
+  html {
+    scroll-behavior: smooth;
   }
   body {
-    background-color: white;
-    color: var(--color-gray-950);
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@utility animate-fade-up {
+  animation: fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility animate-slide-in-right {
+  animation: slide-in-right 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-slide-in-right {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
   }
 }

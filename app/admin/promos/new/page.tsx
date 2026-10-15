@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "../../../lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 export default function NewPromoPage() {
@@ -22,17 +21,17 @@ export default function NewPromoPage() {
     e.preventDefault()
     setLoading(true)
 
-    const { error } = await supabase
-      .from('promos')
-      .insert({
-        ...formData,
-        discount_percent: parseInt(formData.discount_percent)
-      })
+    const res = await fetch('/api/admin/promos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    })
 
-    if (!error) {
+    if (res.ok) {
       router.push('/admin/promos')
     } else {
-      alert('Error creating promo: ' + error.message)
+      const data = await res.json().catch(() => ({}))
+      alert('Error creating promo: ' + (data.error ?? 'please try again'))
     }
     setLoading(false)
   }

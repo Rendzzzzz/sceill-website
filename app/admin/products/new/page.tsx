@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "../../../lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 export default function NewProductPage() {
@@ -22,18 +21,17 @@ export default function NewProductPage() {
     e.preventDefault()
     setLoading(true)
 
-    const { error } = await supabase
-      .from('products')
-      .insert({
-        ...formData,
-        price: parseFloat(formData.price),
-        stock: parseInt(formData.stock)
-      })
+    const res = await fetch('/api/admin/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    })
 
-    if (!error) {
+    if (res.ok) {
       router.push('/admin/products')
     } else {
-      alert('Error creating product: ' + error.message)
+      const data = await res.json().catch(() => ({}))
+      alert('Error creating product: ' + (data.error ?? 'please try again'))
     }
     setLoading(false)
   }

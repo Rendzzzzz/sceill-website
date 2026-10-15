@@ -16,6 +16,9 @@ export default withAuth(
     callbacks: {
       authorized: ({ token }) => !!token
     },
+    pages: {
+      signIn: '/login',
+    },
   }
 )
 
@@ -23,5 +26,6 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/user/:path*',
+    '/checkout/:path*',
   ]
 }

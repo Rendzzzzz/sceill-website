@@ -1,76 +1,74 @@
 // app/api/customers/[id]/route.ts
-import { createClient } from "../../../lib/supabase/server"
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
+import { eq } from "drizzle-orm"
+import { z } from "zod"
+import { customers, db } from "../../../lib/db"
 import { authOptions } from "../../../lib/auth"
+import { toCustomerJson } from "../../../lib/customer-json"
+import { validationError } from "../../../lib/admin"
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+type Context = { params: Promise<{ id: string }> }
+
+// A customer may act on their own record; an admin may act on any.
+async function authorize(id: string) {
   const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) }
+  if (session.user.id !== id && session.user.role !== "admin") {
+    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) }
   }
-
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('customers')
-    .select('*')
-    .eq('id', params.id)
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json(data)
+  return { session }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+// Only these fields can be changed here. role, email and id are deliberately absent.
+const updateSchema = z.object({
+  name: z.string().trim().min(2).max(120).optional(),
+  phone: z.string().trim().max(30).nullable().optional(),
+  address: z.string().trim().min(10).max(255).optional(),
+  postal_code: z.string().trim().max(10).nullable().optional(),
+})
 
-  const body = await request.json()
-  const supabase = createClient()
+export async function GET(_request: Request, { params }: Context) {
+  const { id } = await params
+  const auth = await authorize(id)
+  if (auth.error) return auth.error
 
-  const { data, error } = await supabase
-    .from('customers')
-    .update(body)
-    .eq('id', params.id)
-    .select()
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json(data)
+  const [row] = await db.select().from(customers).where(eq(customers.id, id)).limit(1)
+  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  return NextResponse.json(toCustomerJson(row))
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function PUT(request: Request, { params }: Context) {
+  const { id } = await params
+  const auth = await authorize(id)
+  if (auth.error) return auth.error
+
+  const parsed = updateSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return validationError(parsed.error.issues)
+  const { name, phone, address, postal_code } = parsed.data
+
+  const changes = {
+    ...(name !== undefined && { name }),
+    ...(phone !== undefined && { phone }),
+    ...(address !== undefined && { address }),
+    ...(postal_code !== undefined && { postalCode: postal_code }),
+  }
+  if (Object.keys(changes).length === 0) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 })
   }
 
-  const supabase = createClient()
-  const { error } = await supabase
-    .from('customers')
-    .delete()
-    .eq('id', params.id)
+  await db.update(customers).set(changes).where(eq(customers.id, id))
+  const [row] = await db.select().from(customers).where(eq(customers.id, id)).limit(1)
+  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  return NextResponse.json(toCustomerJson(row))
+}
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+export async function DELETE(_request: Request, { params }: Context) {
+  const { id } = await params
+  const auth = await authorize(id)
+  if (auth.error) return auth.error
 
+  // the password row is removed automatically (ON DELETE CASCADE)
+  await db.delete(customers).where(eq(customers.id, id))
   return NextResponse.json({ success: true })
 }

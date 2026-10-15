@@ -1,49 +1,16 @@
 // app/api/customers/route.ts
-import { createClient } from "../../lib/supabase/server"
+// Customer accounts are created by /api/register and by Google/Apple sign-in,
+// so this route only lists them, and only for admins.
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "../../lib/auth"
+import { desc } from "drizzle-orm"
+import { customers, db } from "../../lib/db"
+import { requireAdmin } from "../../lib/admin"
+import { toCustomerJson } from "../../lib/customer-json"
 
 export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
 
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('customers')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json(data)
-}
-
-export async function POST(request: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const body = await request.json()
-  const supabase = createClient()
-
-  const { data, error } = await supabase
-    .from('customers')
-    .insert({
-      ...body,
-      id: session.user.id
-    })
-    .select()
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json(data)
+  const rows = await db.select().from(customers).orderBy(desc(customers.createdAt))
+  return NextResponse.json(rows.map(toCustomerJson))
 }
