@@ -29,6 +29,8 @@ export type OrderWithItems = OrderRow & { items: OrderItemRow[] }
 
 // ---- pricing -------------------------------------------------------------
 
+import { buildCartQuote } from "./cart-quote"
+
 export interface QuoteLine {
   productId: string
   slug: string
@@ -52,56 +54,24 @@ export interface Quote {
   total: number
 }
 
-// the same product listed twice in a bag becomes one line
-function mergeLines(items: CartLineInput[]) {
-  const wanted = new Map<string, number>()
-  for (const { productId, quantity } of items) {
-    wanted.set(productId, Math.min(10, (wanted.get(productId) ?? 0) + quantity))
-  }
-  return wanted
-}
-
-// `lock` keeps the product rows still while an order is being created
 export async function quoteCart(items: CartLineInput[], executor: Executor = db, lock = false): Promise<Quote> {
-  const wanted = mergeLines(items)
-  const ids = [...wanted.keys()].sort()
-
+  const ids = [...new Set(items.map((item) => item.productId))].sort()
   const query = executor.select().from(products).where(inArray(products.id, ids)).orderBy(asc(products.id))
   const rows = ids.length === 0 ? [] : lock ? await query.for("update") : await query
-  const byId = new Map(rows.map((r) => [r.id, r]))
 
-  const lines: QuoteLine[] = []
-  const issues: QuoteIssue[] = []
-
-  for (const id of ids) {
-    const row = byId.get(id)
-    const quantity = wanted.get(id)!
-    if (!row || !row.isAvailable) {
-      issues.push({ productId: id, name: row?.name ?? "An item in your bag", message: "is no longer available" })
-      continue
-    }
-    if (row.stock <= 0) {
-      issues.push({ productId: id, name: row.name, message: "is sold out" })
-      continue
-    }
-    if (quantity > row.stock) {
-      issues.push({ productId: id, name: row.name, message: `has only ${row.stock} left` })
-    }
-    lines.push({
-      productId: row.id,
+  return buildCartQuote(
+    items,
+    rows.map((row) => ({
+      id: row.id,
       slug: row.slug,
       name: row.name,
       imageUrl: row.imageUrl,
-      unitPrice: row.price,
-      quantity,
-      maxQuantity: Math.min(10, row.stock),
-      lineTotal: row.price * quantity,
-    })
-  }
-
-  const subtotal = lines.reduce((sum, l) => sum + l.lineTotal, 0)
-  const shippingFee = lines.length ? calculateShipping(subtotal) : 0
-  return { lines, issues, subtotal, shippingFee, total: subtotal + shippingFee }
+      price: row.price,
+      stock: row.stock,
+      isAvailable: row.isAvailable,
+    })),
+    calculateShipping
+  )
 }
 
 // ---- stock ---------------------------------------------------------------
