@@ -12,7 +12,7 @@
     "db:studio": "tsx db/check-connection.ts && drizzle-kit studio",
     "db:make-admin": "tsx db/make-admin.ts",
     "db:reset-password": "tsx db/reset-password.ts",
-    "test": "vitest run",
+    "test": "npx --yes vitest@4.0.18 run",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -47,7 +47,6 @@
     "eslint-config-next": "^16.3.8",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5",
-    "vitest": "^4.0.18"
+    "typescript": "^5"
   }
 }
